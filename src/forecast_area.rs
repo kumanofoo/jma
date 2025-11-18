@@ -76,6 +76,21 @@ impl ForecastArea {
         }
         None
     }
+
+    /// Get the office of the AMeDAS station.
+    pub fn get_office_by_amedas(&self, amedas_code: &str) -> Option<String> {
+        for (office_code, offices) in &self.offices {
+            let site = offices
+                .iter()
+                .find(|o| {
+                    o.amedas.iter().any(|c| c == amedas_code)
+                });
+            if site.is_some() {
+                return Some(office_code.clone());
+            }
+        };
+        None
+    }
 }
 
 #[cfg(test)]

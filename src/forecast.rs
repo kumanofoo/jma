@@ -1,8 +1,9 @@
-//! # Forecast
+//! # Fetch Weather Forecast from JMA
 //!
+//! ## API and JSON
 //! <https://www.jma.go.jp/bosai/forecast/data/forecast/>{office_code}.json
 //!
-//! 020000.json
+//! Example of 020000.json
 //! ```json
 //! [
 //!   { // [0]
@@ -135,9 +136,41 @@
 //!   }
 //! ]
 //! ```
+//! 
+//! ## Example
+//! ```rust
+//! use jma::forecast::JmaForecast;
+//! 
+//! #[tokio::main]
+//! async fn main() {
+//!     let sapporo = ("016000", "14163");
+//!     let (office, area) = sapporo;
+//! 
+//!     let forecast = JmaForecast::new(office).await.unwrap();
+//!     let peak = forecast.temperature_forecast(area).unwrap();
+//!     println!("report_datetime: {}", peak.report_datetime);
+//!     println!("      area_name: {}", peak.area_name);
+//!     println!("      area_code: {}", peak.area_code);
+//!     println!("         lowest: {}", peak.lowest);
+//!     println!("lowest_datetime: {}", peak.lowest_datetime);
+//!     println!("        highest: {}", peak.highest);
+//!     println!("highest_datetime: {}", peak.highest_datetime);
+//! }
+//! ```
+//! Output:
+//! ```console
+//! report_datetime: 2025-11-18T11:00:00+09:00
+//!       area_name: 札幌
+//!       area_code: 14163
+//!          lowest: -1
+//! lowest_datetime: 2025-11-19T00:00:00+09:00
+//!         highest: 2
+//! highest_datetime: 2025-11-18T09:00:00+09:0
+//! ```
 
+use chrono::{Local, Timelike};
 use reqwest::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 ///
@@ -258,6 +291,71 @@ impl JmaForecast {
     pub fn get_temperature_points(&self) -> Vec<Temps> {
         serde_json::from_value(self.json[0]["timeSeries"][2]["areas"].clone()).unwrap()
     }
+
+    pub fn temperature_forecast(&self, area_code: &str) -> Option<PeakTemp> {
+	let peaks: PeakTemps = match serde_json::from_value(self.json[0]["timeSeries"][2].clone()) {
+	    Ok(peaks) => peaks,
+	    Err(_) => return None,
+	};
+
+        let mut report_dt = None;
+        if let Value::Array(arr) = &self.json {
+            if let Some(first_object) = arr.get(0) {
+                if let Some(report_datetime_value) = first_object.get("reportDatetime") {
+                    if let Value::String(report_datetime_str) = report_datetime_value {
+                        report_dt = Some(report_datetime_str);
+                    }
+                }
+            }
+        }
+
+	let report_datetime = match report_dt {
+	    Some(dt) => dt.to_string(),
+	    None => return None,
+	};
+
+        let now = Local::now();
+        let (lowest_index, highest_index) = if 5 <= now.hour() && now.hour() < 17 {
+	    (2, 0)
+        }
+        else {
+	    (0, 1)
+        };
+	let lowest_datetime = match peaks.time_defines.get(lowest_index) {
+	    Some(dt) => dt.clone(),
+	    None => return None,
+	};
+	let highest_datetime = match peaks.time_defines.get(highest_index) {
+	    Some(dt) => dt.clone(),
+	    None => return None,
+	};
+	let mut peak = PeakTemp {
+	    report_datetime,
+	    area_name: "".to_string(),
+	    area_code: "".to_string(),
+	    lowest: "".to_string(),
+	    lowest_datetime,
+	    highest: "".to_string(),
+	    highest_datetime,
+	};
+	match peaks.areas.iter().find(|a| a.area.code == area_code) {
+	    Some(area) => {
+		peak.area_name = area.area.name.to_string();
+		peak.area_code = area.area.code.to_string();
+		peak.lowest = match area.temps.get(lowest_index) {
+		    Some(l) => l.to_string(),
+		    None => return None,
+		};
+		peak.highest = match area.temps.get(highest_index) {
+		    Some(h) => h.to_string(),
+		    None => return None,
+		};
+	    },
+	    None => return None,
+	};
+
+        return Some(peak);
+    }
 }
 
 /// The area name and code of an temperature points.
@@ -277,5 +375,28 @@ pub struct TempsArea {
 #[derive(Deserialize, Debug)]
 pub struct Temps {
     pub area: TempsArea,
-    //temps: Vec<String>,
+    pub temps: Vec<String>,
+}
+
+/// The peak temperature and datetime of the class10 regions.
+///
+/// `{office}.json: [0].timeSeries[2]`
+#[derive(Deserialize, Debug)]
+pub struct PeakTemps {
+    #[serde(rename = "timeDefines")]
+    pub time_defines: Vec<String>,
+    pub areas: Vec<Temps>,
+}
+
+/// The peak temperature and datetime of the area.
+///
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PeakTemp {
+    pub report_datetime: String,
+    pub area_name: String,
+    pub area_code: String,
+    pub lowest: String,
+    pub lowest_datetime: String,
+    pub highest: String,
+    pub highest_datetime: String,
 }
