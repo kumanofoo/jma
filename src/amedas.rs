@@ -205,13 +205,54 @@ pub const AMEDAS_WEATHER_EMOJI_DISCORD: [(u32, &str); 19]  = [
     (999, ":construction:"),
 ];
 
+pub const JMA_WEATHER_SVG_URL: &str = "https://www.jma.go.jp/bosai/forecast/img";
+pub const AMEDAS_WEATHER_JMA_WEATHER_CODES: [(u32, u32, u32); 19]  = [
+    (0, 100, 500),
+    (1, 200, 200),
+    (2, 200, 200),
+    (3, 300, 300),
+    (4, 300, 300),
+    (5, 300, 300),
+    (6, 400, 400),
+    (7, 300, 300),
+    (8, 400, 400),
+    (9, 403, 403),
+    (10, 400, 400),
+    (11, 403, 403),
+    (12, 400, 400),
+    (13, 302, 302),
+    (14, 402, 402),
+    (15, 400, 400),
+    (16, 300, 300),
+    (100, 500, 500),
+    (999, 308, 308), // Weather code Not found
+];
+pub fn svg_url(code: u32, night: bool) -> String {
+    let mut code_999 = None;
+    for (c, day_svg, night_svg) in AMEDAS_WEATHER_JMA_WEATHER_CODES {
+        if code == c {
+            let svg = match night {
+                true => night_svg,
+                false => day_svg,
+            };
+            return format!("{}/{}.svg", JMA_WEATHER_SVG_URL, svg);
+        }
+        if c == 999 {
+            code_999 = Some(match night { true => night_svg, false => day_svg });
+        }
+    }
+
+    // The code is not found in AMEDAS_WEATHER_JMA_WEATHER_CODES.
+    return format!("{}/{}.svg", JMA_WEATHER_SVG_URL, code_999.unwrap());
+}
+
 pub fn weather_emoji(code: u32, emoji: [(u32, &str); 19]) -> String {
     let mut code_999 = None;
     for (c, e) in emoji {
         if code == c {
             return e.to_string();
         }
-        if code == 999 {
+        if c == 999 {
             code_999 = Some(e.to_string());
         }
     }
@@ -388,5 +429,27 @@ mod tests {
         let amedas = Amedas::new("14163").await.unwrap();
 	let data = amedas.get_latest_data();
         println!("amedas: {:?}", data);
+    }
+
+    #[tokio::test]
+    async fn test_svg_url() {
+        // Day
+        for (code, _day_svg, _night_svg) in AMEDAS_WEATHER_JMA_WEATHER_CODES {
+            let url = svg_url(code, false);
+            let response = reqwest::get(url).await.unwrap();
+            assert_eq!(response.status(), reqwest::StatusCode::OK);
+        }
+        // Night
+        for (code, _day_svg, _night_svg) in AMEDAS_WEATHER_JMA_WEATHER_CODES {
+            let url = svg_url(code, true);
+            let response = reqwest::get(url).await.unwrap();
+            assert_eq!(response.status(), reqwest::StatusCode::OK);
+        }
+        // Undefined code
+        for code in [17, 200] {
+            let url = svg_url(code, true);
+            let response = reqwest::get(url).await.unwrap();
+            assert_eq!(response.status(), reqwest::StatusCode::OK);
+        }
     }
 }
