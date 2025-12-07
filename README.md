@@ -11,7 +11,7 @@
 |:--- | :--- | :--- | :---: | :---: |
 |0|![0.bmp](img/0.bmp)| 晴 | ![CLEAR](https://www.jma.go.jp/bosai/forecast/img/100.svg) | ![Clear](https://worldweather.wmo.int/images/24a.png) |
 |1|![1.bmp](img/1.bmp)| 曇 | ![CLOUDY](https://www.jma.go.jp/bosai/forecast/img/200.svg) | ![Cloudy](https://worldweather.wmo.int/images/23a.png) |
-|2|![2.bmp](img/2.bmp)| 煙霧 !| ![CLOUDY](https://www.jma.go.jp/bosai/forecast/img/200.svg) | ![Haze](https://worldweather.wmo.int/images/19.png) |
+|2|![2.bmp](img/2.bmp)| 煙霧 | ![CLOUDY](https://www.jma.go.jp/bosai/forecast/img/200.svg) | ![Haze](https://worldweather.wmo.int/images/19.png) |
 |3|![3.bmp](img/3.bmp)| 霧 | ![RAIN](https://www.jma.go.jp/bosai/forecast/img/300.svg) | ![Mist](https://worldweather.wmo.int/images/17.png) |
 |4|![4.bmp](img/4.bmp)| 降水またはしゅう雨性の降水 | ![RAIN](https://www.jma.go.jp/bosai/forecast/img/300.svg) | ![Occasional Showers](https://worldweather.wmo.int/images/10.png) |
 |5|![5.bmp](img/5.bmp)| 霧雨 | ![RAIN](https://www.jma.go.jp/bosai/forecast/img/300.svg) | ![Drizzle](https://worldweather.wmo.int/images/15.png) |
