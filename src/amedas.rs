@@ -2,7 +2,7 @@
 //! 
 //! ## Example
 //! ```rust
-//! use jma::amedas::{station_info, Amedas, AmedasData};
+//! use jma::amedas::{station_information, Amedas, AmedasData};
 //! 
 //! #[tokio::main]
 //! async fn main() {
@@ -267,6 +267,8 @@ pub struct AmedasRawData {
     pub humidity: (f32, u32),
     pub visibility: (f32, u32),
     pub weather: Option<(u32, u32)>,
+    pub snow1h: Option<(f32, u32)>,
+    pub precipitation10m: (f32, u32),
     #[serde(rename = "windDirection")]    
     pub wind_direction: (Option<u32>, u32),
     pub wind: (Option<f32>, u32),
@@ -279,6 +281,8 @@ pub struct AmedasData {
     pub humidity_percent: f32,
     pub visibility_m: f32,
     pub weather: Option<u32>,
+    pub snow1h: Option<f32>,
+    pub precipitation10m: f32,
     #[serde(rename = "windDirection")]    
     pub wind_direction: u32,
     pub wind_mps: f32,
@@ -307,13 +311,18 @@ impl From<&AmedasRawData> for AmedasData {
         let wind = amedas.wind.0.unwrap_or(0.0);
         let wind_direction_str = AMEDAS_WIND_DIRECTION_STR[wind_direction as usize].to_string();
         let wind_direction_emoji = AMEDAS_WIND_DIRECTION_ARROW[wind_direction as usize].to_string();
-        
+        let snow1h = match amedas.snow1h {
+            Some(s) => Some(s.0),
+            None => None,
+        };
         AmedasData {
             pressure_hpa: amedas.pressure.0,
             temp_c: amedas.temp.0,
             humidity_percent: amedas.humidity.0,
             visibility_m: amedas.visibility.0,
             weather,
+            snow1h,
+            precipitation10m: amedas.precipitation10m.0,
             wind_direction: wind_direction,
             wind_mps: wind,
             weather_slack_emoji: slack,
@@ -372,6 +381,7 @@ impl Amedas {
         
 	if let Some(dt) = latest_weather_datetime {
             latest_data.weather = self.data[dt].weather;
+            latest_data.snow1h = self.data[dt].snow1h;
         }
 	
 	Some(latest_data)
