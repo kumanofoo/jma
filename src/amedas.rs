@@ -22,10 +22,14 @@
 //!             return;
 //!         },
 //!     };
+//!     let visibility_m = match latest.visibility_m {
+//!         Some(v) => v.to_string(),
+//!         None => "-".to_string(),
+//!     };
 //!     println!("      Pressure: {} hPa", latest.pressure_hpa);
 //!     println!("   Temperature: {} ℃", latest.temp_c);
 //!     println!("      Humidity: {} %", latest.humidity_percent);
-//!     println!("    Visibility: {} m", latest.visibility_m);
+//!     println!("    Visibility: {} m", visibility_m);
 //!     println!("          Wind: {} {} m", latest.wind_direction_emoji, latest.wind_mps);
 //!     println!("       Weather: {}", latest.weather_discord_emoji);
 //! }
@@ -265,10 +269,11 @@ pub struct AmedasRawData {
     pub pressure: (f32, u32),
     pub temp: (f32, u32),
     pub humidity: (f32, u32),
-    pub visibility: (f32, u32),
+    pub visibility: Option<(f32, u32)>,
     pub weather: Option<(u32, u32)>,
-    pub snow1h: Option<(f32, u32)>,
+    pub snow1h: Option<(f32, Option<u32>)>,
     pub precipitation10m: (f32, u32),
+    pub precipitation1h: (f32, u32),
     #[serde(rename = "windDirection")]    
     pub wind_direction: (Option<u32>, u32),
     pub wind: (Option<f32>, u32),
@@ -279,10 +284,11 @@ pub struct AmedasData {
     pub pressure_hpa: f32,
     pub temp_c: f32,
     pub humidity_percent: f32,
-    pub visibility_m: f32,
+    pub visibility_m: Option<f32>,
     pub weather: Option<u32>,
     pub snow1h: Option<f32>,
     pub precipitation10m: f32,
+    pub precipitation1h: f32,
     #[serde(rename = "windDirection")]    
     pub wind_direction: u32,
     pub wind_mps: f32,
@@ -295,6 +301,10 @@ pub struct AmedasData {
 
 impl From<&AmedasRawData> for AmedasData {
     fn from(amedas: &AmedasRawData) -> Self {
+        let visibility_m = match amedas.visibility {
+            Some(v) => Some(v.0),
+            None => None,
+        };
         let (weather, slack, discord) = match amedas.weather {
             Some(w) => {
                 let slack = weather_emoji(w.0, AMEDAS_WEATHER_EMOJI_SLACK);
@@ -312,17 +322,21 @@ impl From<&AmedasRawData> for AmedasData {
         let wind_direction_str = AMEDAS_WIND_DIRECTION_STR[wind_direction as usize].to_string();
         let wind_direction_emoji = AMEDAS_WIND_DIRECTION_ARROW[wind_direction as usize].to_string();
         let snow1h = match amedas.snow1h {
-            Some(s) => Some(s.0),
+            Some(s) => match s.1 {
+                Some(_) => Some(s.0),
+                None => None,
+            },
             None => None,
         };
         AmedasData {
             pressure_hpa: amedas.pressure.0,
             temp_c: amedas.temp.0,
             humidity_percent: amedas.humidity.0,
-            visibility_m: amedas.visibility.0,
+            visibility_m,
             weather,
             snow1h,
             precipitation10m: amedas.precipitation10m.0,
+            precipitation1h: amedas.precipitation1h.0,
             wind_direction: wind_direction,
             wind_mps: wind,
             weather_slack_emoji: slack,
@@ -344,9 +358,8 @@ impl Amedas {
     pub async fn new(amedas_code: &str) -> Result<Amedas, AmedasError> {
         let latest_time = get_latest_time().await?;
         let url = create_amedas_url(amedas_code, &latest_time)?;
-        println!("url: {}", url);
-	    let data = amedas_data(&url).await?;
-	    Ok(Amedas { amedas_code: amedas_code.to_string(), data, latest_time })
+        let data = amedas_data(&url).await?;
+        Ok(Amedas { amedas_code: amedas_code.to_string(), data, latest_time })
     }
 
     pub async fn update(&mut self) -> Result<bool, AmedasError> {
