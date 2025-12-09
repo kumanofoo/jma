@@ -22,11 +22,15 @@
 //!             return;
 //!         },
 //!     };
+//!     let pressure_hpa = match latest.pressure_hpa {
+//!         Some(p) => p.to_string(),
+//!         None => "-".to_string(),
+//!     };
 //!     let visibility_m = match latest.visibility_m {
 //!         Some(v) => v.to_string(),
 //!         None => "-".to_string(),
 //!     };
-//!     println!("      Pressure: {} hPa", latest.pressure_hpa);
+//!     println!("      Pressure: {} hPa", pressure_hpa);
 //!     println!("   Temperature: {} ℃", latest.temp_c);
 //!     println!("      Humidity: {} %", latest.humidity_percent);
 //!     println!("    Visibility: {} m", visibility_m);
@@ -266,7 +270,7 @@ pub fn weather_emoji(code: u32, emoji: [(u32, &str); 19]) -> String {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AmedasRawData {
-    pub pressure: (f32, u32),
+    pub pressure: Option<(f32, u32)>,
     pub temp: (f32, u32),
     pub humidity: (f32, u32),
     pub visibility: Option<(f32, u32)>,
@@ -281,7 +285,7 @@ pub struct AmedasRawData {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AmedasData {
-    pub pressure_hpa: f32,
+    pub pressure_hpa: Option<f32>,
     pub temp_c: f32,
     pub humidity_percent: f32,
     pub visibility_m: Option<f32>,
@@ -301,6 +305,10 @@ pub struct AmedasData {
 
 impl From<&AmedasRawData> for AmedasData {
     fn from(amedas: &AmedasRawData) -> Self {
+        let pressure_hpa = match amedas.pressure {
+            Some(v) => Some(v.0),
+            None => None,
+        };
         let visibility_m = match amedas.visibility {
             Some(v) => Some(v.0),
             None => None,
@@ -329,7 +337,7 @@ impl From<&AmedasRawData> for AmedasData {
             None => None,
         };
         AmedasData {
-            pressure_hpa: amedas.pressure.0,
+            pressure_hpa,
             temp_c: amedas.temp.0,
             humidity_percent: amedas.humidity.0,
             visibility_m,
