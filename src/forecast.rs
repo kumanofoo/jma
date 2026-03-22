@@ -168,7 +168,7 @@
 //! highest_datetime: 2025-11-18T09:00:00+09:0
 //! ```
 
-use chrono::{Local, Timelike};
+use chrono::{DateTime, Timelike};
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -314,8 +314,14 @@ impl JmaForecast {
 	    None => return None,
 	};
 
-        let now = Local::now();
-        let (lowest_index, highest_index) = if 5 <= now.hour() && now.hour() < 17 {
+        let hour = match report_dt {
+            Some(dt_str) => match DateTime::parse_from_rfc3339(&dt_str) {
+                Ok(dt) => dt.hour(),
+                Err(_) => return None,
+            },
+            None => return None,
+        };
+        let (lowest_index, highest_index) = if 5 <= hour && hour < 17 {
 	    (2, 0)
         }
         else {
