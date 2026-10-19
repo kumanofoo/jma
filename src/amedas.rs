@@ -273,11 +273,11 @@ pub struct AmedasRawData {
     pub pressure: Option<(f32, u32)>,
     pub temp: (f32, u32),
     pub humidity: (f32, u32),
-    pub visibility: Option<(f32, u32)>,
-    pub weather: Option<(u32, u32)>,
+    pub visibility: Option<(Option<f32>, u32)>,
+    pub weather: Option<(Option<u32>, u32)>,
     pub snow1h: Option<(f32, Option<u32>)>,
-    pub precipitation10m: (f32, u32),
-    pub precipitation1h: (f32, u32),
+    pub precipitation10m: (Option<f32>, u32),
+    pub precipitation1h: (Option<f32>, u32),
     #[serde(rename = "windDirection")]    
     pub wind_direction: (Option<u32>, u32),
     pub wind: (Option<f32>, u32),
@@ -291,8 +291,8 @@ pub struct AmedasData {
     pub visibility_m: Option<f32>,
     pub weather: Option<u32>,
     pub snow1h: Option<f32>,
-    pub precipitation10m: f32,
-    pub precipitation1h: f32,
+    pub precipitation10m: Option<f32>,
+    pub precipitation1h: Option<f32>,
     #[serde(rename = "windDirection")]    
     pub wind_direction: u32,
     pub wind_mps: f32,
@@ -310,14 +310,21 @@ impl From<&AmedasRawData> for AmedasData {
             None => None,
         };
         let visibility_m = match amedas.visibility {
-            Some(v) => Some(v.0),
+            Some(v) => v.0,
             None => None,
         };
         let (weather, slack, discord) = match amedas.weather {
-            Some(w) => {
-                let slack = weather_emoji(w.0, AMEDAS_WEATHER_EMOJI_SLACK);
-                let discord = weather_emoji(w.0, AMEDAS_WEATHER_EMOJI_DISCORD);
-                (Some(w.0), slack, discord)
+            Some(w) => match w.0 {
+                Some(w) => {
+                    let slack = weather_emoji(w, AMEDAS_WEATHER_EMOJI_SLACK);
+                    let discord = weather_emoji(w, AMEDAS_WEATHER_EMOJI_DISCORD);
+                    (Some(w), slack, discord)
+                },
+                None => {
+                    let slack = weather_emoji(999, AMEDAS_WEATHER_EMOJI_SLACK);
+                    let discord = weather_emoji(999, AMEDAS_WEATHER_EMOJI_DISCORD);
+                    (None, slack, discord)
+                }
             },
             None => {
                 let slack = weather_emoji(999, AMEDAS_WEATHER_EMOJI_SLACK);
